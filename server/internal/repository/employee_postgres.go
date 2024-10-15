@@ -3,8 +3,8 @@ package repository
 import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
-	"serverClientClient/server/internal/model"
-	"serverClientClient/server/pkg/database"
+	"serverClientClient/internal/model"
+	"serverClientClient/pkg/database"
 	"strconv"
 	"time"
 )
@@ -36,4 +36,15 @@ func (r *EmployeePostgres) Init(count int) (bool, error) {
 	}
 
 	return initialized, nil
+}
+
+func (r *EmployeePostgres) GetAll() ([]model.Employee, error) {
+	employees := make([]model.Employee, 0)
+
+	err := r.db.Select(&employees, fmt.Sprintf("SELECT * FROM %s", EmployeesTableName))
+	if err != nil {
+		return nil, err
+	}
+
+	return employees, nil
 }

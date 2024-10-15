@@ -24,11 +24,16 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		logrus.Fatal("error loading .env file")
+		logrus.Error("error loading .env file")
+		return
 	}
 	gin.SetMode(os.Getenv("GIN_MODE"))
 
 	db, err := database.NewPostgresDB(database.DBConfig{Host: os.Getenv("DB_HOST"), Port: os.Getenv("DB_PORT"), User: os.Getenv("DB_USER"), Password: os.Getenv("DB_PASSWORD"), DBName: os.Getenv("DB_NAME"), SSLMode: os.Getenv("DB_SSLMODE")})
+	if err != nil {
+		logrus.Errorf("error connecting to the database: %v", err)
+		return
+	}
 	defer func(db *sqlx.DB) {
 		err := db.Close()
 		if err != nil {
@@ -37,12 +42,9 @@ func main() {
 	}(db)
 
 	migrator := database.NewMigrator(db)
-	if err = migrator.Migrate(database.PostgresDialect, "server/schema"); err != nil {
-		logrus.Fatal(err)
-	}
-
-	if err != nil {
-		logrus.Fatalf("open database err: %v", err)
+	if err = migrator.Migrate(database.PostgresDialect, "schema"); err != nil {
+		logrus.Error(err)
+		return
 	}
 
 	srv := server.HttpServer{}
@@ -52,12 +54,14 @@ func main() {
 
 	countToInit, err := strconv.Atoi(os.Getenv("SERVER_EMP_COUNT"))
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Error(err)
+		return
 	}
 
 	initialized, err := services.Employee.InitDB(countToInit)
 	if err != nil {
-		logrus.Fatal(err)
+		logrus.Error(err)
+		return
 	}
 
 	if initialized {
@@ -65,12 +69,12 @@ func main() {
 	}
 
 	go func() {
-		logrus.Info("starting server...")
+		logrus.Info("server started!")
 		err = srv.Run(os.Getenv("SERVER_PORT"), handlers.InitRoutes())
 		if err != nil && errors.Is(err, http.ErrServerClosed) {
 			logrus.Info("server stopped")
 		} else if err != nil {
-			logrus.Fatal(err)
+			logrus.Error(err)
 		}
 	}()
 
@@ -82,6 +86,7 @@ func main() {
 	defer cancel()
 	err = srv.Shutdown(ctx)
 	if err != nil {
-		logrus.Fatalf("error while stopping server: %s", err)
+		logrus.Errorf("error while stopping server: %s", err)
+		return
 	}
 }

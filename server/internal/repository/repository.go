@@ -2,7 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
-	"serverClientClient/server/internal/model"
+	"serverClientClient/internal/model"
 )
 
 type PostgresRepository struct {
@@ -16,4 +16,5 @@ func NewRepository(db *sqlx.DB) *PostgresRepository {
 type Employee interface {
 	GetById(id int) (model.Employee, error)
 	Init(count int) (bool, error)
+	GetAll() ([]model.Employee, error)
 }

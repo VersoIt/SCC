@@ -2,7 +2,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
-	"serverClientClient/server/internal/service"
+	"serverClientClient/internal/service"
 )
 
 type Handler struct {
@@ -17,9 +17,10 @@ func (h *Handler) InitRoutes() *gin.Engine {
 	router := gin.New()
 	api := router.Group("/api")
 	{
-		employee := api.Group("/employee")
+		employee := api.Group("/employee", h.useCORS)
 		{
 			employee.GET(":id", h.getEmployeeById)
+			employee.GET("/", h.getAllEmployees)
 		}
 	}
 	return router

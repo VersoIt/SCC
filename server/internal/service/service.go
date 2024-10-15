@@ -1,8 +1,8 @@
 package service
 
 import (
-	"serverClientClient/server/internal/model"
-	"serverClientClient/server/internal/repository"
+	"serverClientClient/internal/model"
+	repository "serverClientClient/internal/repository"
 )
 
 type Service struct {
@@ -16,4 +16,5 @@ func NewService(repo *repository.PostgresRepository) *Service {
 type Employee interface {
 	GetById(id int) (model.Employee, error)
 	InitDB(count int) (bool, error)
+	GetAll() ([]model.Employee, error)
 }

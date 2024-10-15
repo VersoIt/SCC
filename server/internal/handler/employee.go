@@ -23,3 +23,13 @@ func (h *Handler) getEmployeeById(c *gin.Context) {
 
 	c.JSON(http.StatusOK, employee)
 }
+
+func (h *Handler) getAllEmployees(c *gin.Context) {
+	employees, err := h.service.Employee.GetAll()
+	if err != nil {
+		newErrorResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, employees)
+}
