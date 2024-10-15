@@ -1,9 +1,17 @@
 -- +goose Up
 -- +goose StatementBegin
-SELECT 'up SQL query';
+CREATE TABLE IF NOT EXISTS employees
+(
+    id         SERIAL PRIMARY KEY,
+    first_name VARCHAR(64)         NOT NULL,
+    last_name  VARCHAR(64)         NOT NULL,
+    email      VARCHAR(128) UNIQUE NOT NULL,
+    hire_date  DATE                NOT NULL
+);
+
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-SELECT 'down SQL query';
+DROP TABLE IF EXISTS employees;
 -- +goose StatementEnd

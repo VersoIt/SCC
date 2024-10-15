@@ -1,4 +1,4 @@
-package db
+package database
 
 import (
 	"github.com/jmoiron/sqlx"
@@ -13,7 +13,7 @@ func NewMigrator(db *sqlx.DB) *Migrator {
 	return &Migrator{db: db}
 }
 
-func (m *Migrator) migrate(dialect, schemaSrc string) error {
+func (m *Migrator) Migrate(dialect, schemaSrc string) error {
 	if err := goose.SetDialect(dialect); err != nil {
 		return err
 	}

@@ -1,17 +1,15 @@
-version: '3.1'
-
 services:
   db:
     image: postgres:15
     restart: always
     container_name: scc_postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: db
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: scc_db
       PG_DATA: /var/lib/postgresql/data/
     ports:
-      - "5431:5431"
+      - "5432:5432"
     volumes:
       - db:/var/lib/postgresql/data/
 
