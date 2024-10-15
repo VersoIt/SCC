@@ -1,9 +1,14 @@
 package main
 
 import (
-	_ "github.com/lib/pq"
+	"fmt"
+	"time"
 )
 
 func main() {
-
+	fmt.Println("hello from client_sender")
+	for {
+		time.Sleep(5 * time.Second)
+		fmt.Println("client_sender")
+	}
 }
