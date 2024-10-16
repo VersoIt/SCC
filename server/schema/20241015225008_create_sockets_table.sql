@@ -1,12 +1,12 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE socket_clients(
+CREATE TABLE sockets(
     id VARCHAR(255) PRIMARY KEY,
-    data TEXT
+    data BYTEA
 );
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS socket_clients;
+DROP TABLE IF EXISTS sockets;
 -- +goose StatementEnd
