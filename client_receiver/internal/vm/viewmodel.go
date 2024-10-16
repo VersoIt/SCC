@@ -24,3 +24,7 @@ func (v *ViewModel) GetErrorChan() <-chan error {
 func (v *ViewModel) GetBytesReadChan() <-chan int64 {
 	return v.service.GetBytesReadChan()
 }
+
+func (v *ViewModel) ShutdownStreams(ctx context.Context) error {
+	return v.service.ShutdownStreams(ctx)
+}

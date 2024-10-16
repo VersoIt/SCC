@@ -69,9 +69,12 @@ func main() {
 		exit := make(chan os.Signal, 1)
 		signal.Notify(exit, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 		<-exit
-
-		cancel()
 		window.Close()
+
+		if err = viewModel.ShutdownStreams(ctx); err != nil {
+			logrus.Error(err)
+		}
+		cancel()
 	}()
 
 	window.Show()

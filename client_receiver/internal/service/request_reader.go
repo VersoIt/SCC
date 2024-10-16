@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"sync"
 	"sync/atomic"
 )
 
@@ -20,12 +21,14 @@ type RequestReader struct {
 	errorChan          chan error
 	bytesReadCountChan chan int64
 	readBytes          atomic.Int64
-	launched           bool
 	requests           chan func()
+	wg                 sync.WaitGroup
 }
 
 func NewRequestReader(endpoint string) *RequestReader {
-	return &RequestReader{bytesChan: make(chan []byte), endpoint: endpoint, bytesReadCountChan: make(chan int64), errorChan: make(chan error), launched: false, requests: make(chan func(), requestsCountAtTime)}
+	rr := &RequestReader{bytesChan: make(chan []byte), endpoint: endpoint, bytesReadCountChan: make(chan int64), errorChan: make(chan error), requests: make(chan func(), requestsCountAtTime)}
+	rr.launchRequestListener()
+	return rr
 }
 
 func (rr *RequestReader) GetErrorChan() <-chan error {
@@ -36,23 +39,19 @@ func (rr *RequestReader) GetBytesChan() chan []byte {
 	return rr.bytesChan
 }
 
-func (rr *RequestReader) ReadToChan(ctx context.Context) {
+func (rr *RequestReader) launchRequestListener() {
+	rr.wg.Add(1)
+	go func() {
+		defer rr.wg.Done()
+		for request := range rr.requests {
+			request()
+		}
+	}()
+}
+
+func (rr *RequestReader) ReadToChan() {
 	if rr.bytesChan == nil {
 		panic("bytes chan must not be nil")
-	}
-
-	if !rr.launched {
-		rr.launched = true
-		go func() {
-			for request := range rr.requests {
-				request()
-				select {
-				case <-ctx.Done():
-					return
-				default:
-				}
-			}
-		}()
 	}
 
 	rr.requests <- func() {
@@ -94,4 +93,21 @@ func (rr *RequestReader) ReadToChan(ctx context.Context) {
 
 func (rr *RequestReader) GetReadBytesCountChan() <-chan int64 {
 	return rr.bytesReadCountChan
+}
+
+func (rr *RequestReader) Shutdown(ctx context.Context) error {
+	done := make(chan struct{})
+
+	go func() {
+		rr.wg.Wait()
+		close(rr.requests)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

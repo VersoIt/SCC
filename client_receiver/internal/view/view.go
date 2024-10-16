@@ -7,7 +7,7 @@ import (
 func BuildWindowWithButton(title string, text string, clickHandler func(bool)) (*widgets.QMainWindow, *widgets.QPushButton) {
 	window := widgets.NewQMainWindow(nil, 0)
 	window.SetWindowTitle(title)
-	window.SetMinimumSize2(400, 300)
+	window.SetFixedSize2(300, 100)
 
 	button := widgets.NewQPushButton2(text, nil)
 	button.ConnectClicked(clickHandler)

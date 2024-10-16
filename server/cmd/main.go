@@ -3,19 +3,21 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
-	"serverClientClient"
-	"serverClientClient/internal/handler"
+	http2 "serverClientClient/internal/handler/http"
 	"serverClientClient/internal/repository"
 	"serverClientClient/internal/service"
 	"serverClientClient/pkg/database"
+	"serverClientClient/pkg/server"
 	"strconv"
 	"syscall"
 	"time"
@@ -47,10 +49,22 @@ func main() {
 		return
 	}
 
-	srv := server.HttpServer{}
+	tcpServer, err := server.NewTcpServer(os.Getenv("TCP_SERVER_PORT"), func(conn server.ReadWriteConn) {
+		input := make([]byte, 1024)
+		bytesRead, err := conn.Read(input)
+		if err != nil {
+			logrus.Error(err)
+		}
+		fmt.Println(string(input[:bytesRead]))
+		_, err = conn.Write([]byte("Ruslan"))
+		if err != nil {
+			logrus.Error(err)
+		}
+	})
+	httpServer := server.HttpServer{}
 	repo := repository.NewRepository(db)
 	services := service.NewService(repo)
-	handlers := handler.NewHandler(services)
+	handlers := http2.NewHandler(services)
 
 	countToInit, err := strconv.Atoi(os.Getenv("SERVER_EMP_COUNT"))
 	if err != nil {
@@ -69,10 +83,20 @@ func main() {
 	}
 
 	go func() {
-		logrus.Info("server started!")
-		err = srv.Run(os.Getenv("SERVER_PORT"), handlers.InitRoutes())
+		logrus.Info("TCP server started!")
+		err := tcpServer.Run()
+		if err != nil && errors.Is(err, net.ErrClosed) {
+			logrus.Info("TCP server stopped")
+		} else if err != nil {
+			logrus.Error(err)
+		}
+	}()
+
+	go func() {
+		logrus.Info("HTTP server started!")
+		err = httpServer.Run(os.Getenv("HTTP_SERVER_PORT"), handlers.InitRoutes())
 		if err != nil && errors.Is(err, http.ErrServerClosed) {
-			logrus.Info("server stopped")
+			logrus.Info("HTTP server stopped")
 		} else if err != nil {
 			logrus.Error(err)
 		}
@@ -84,9 +108,14 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err = srv.Shutdown(ctx)
+	err = httpServer.Shutdown(ctx)
 	if err != nil {
-		logrus.Errorf("error while stopping server: %s", err)
+		logrus.Errorf("error while stopping HTTP server: %s", err)
+		return
+	}
+	err = tcpServer.Shutdown(ctx)
+	if err != nil {
+		logrus.Errorf("error while stopping TCP server: %s", err)
 		return
 	}
 }

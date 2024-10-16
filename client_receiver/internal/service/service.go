@@ -6,17 +6,18 @@ import (
 
 type stream interface {
 	GetErrorChan() <-chan error
+	Shutdown(ctx context.Context) error
 }
 
 type byteFlowReader interface {
-	ReadToChan(context.Context)
+	ReadToChan()
 	GetBytesChan() chan []byte
 	GetReadBytesCountChan() <-chan int64
 	stream
 }
 
 type byteFlowWriter interface {
-	WriteFromChan(context.Context)
+	StartWritingFromChan(context.Context)
 	SetBytesChan(chan []byte)
 	stream
 }
@@ -33,14 +34,14 @@ func NewService(reader byteFlowReader, writer byteFlowWriter) *Service {
 }
 
 func (s *Service) TransmitChunks(ctx context.Context) {
-	s.byteFlowReader.ReadToChan(ctx)
+	s.byteFlowReader.ReadToChan()
 	if s.launched {
 		return
 	}
 	s.launched = true
 
 	s.byteFlowWriter.SetBytesChan(s.byteFlowReader.GetBytesChan())
-	s.byteFlowWriter.WriteFromChan(ctx)
+	s.byteFlowWriter.StartWritingFromChan(ctx)
 
 	go func() {
 		for {
@@ -62,4 +63,14 @@ func (s *Service) GetStreamErrorChan() <-chan error {
 
 func (s *Service) GetBytesReadChan() <-chan int64 {
 	return s.byteFlowReader.GetReadBytesCountChan()
+}
+
+func (s *Service) ShutdownStreams(ctx context.Context) error {
+	if err := s.byteFlowReader.Shutdown(ctx); err != nil {
+		return err
+	}
+	if err := s.byteFlowWriter.Shutdown(ctx); err != nil {
+		return err
+	}
+	return nil
 }
