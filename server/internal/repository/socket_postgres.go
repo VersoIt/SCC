@@ -1,11 +1,22 @@
 package repository
 
-import "github.com/jmoiron/sqlx"
+import (
+	"github.com/jmoiron/sqlx"
+	"serverClientClient/internal/model"
+)
 
-type SocketRepository struct {
+type SocketPostgres struct {
 	db *sqlx.DB
 }
 
-func NewSocketRepository(db *sqlx.DB) *SocketRepository {
-	
+func NewSocketPostgres(db *sqlx.DB) *SocketPostgres {
+	return &SocketPostgres{db: db}
+}
+
+func (p *SocketPostgres) SaveToDB(socket model.SocketData) error {
+	_, err := p.db.Exec("INSERT INTO sockets (id, data) VALUES($1, $2) ON CONFLICT (id) DO UPDATE SET id = $1, data = $2", socket.Id, socket.Data)
+	if err != nil {
+		return err
+	}
+	return nil
 }

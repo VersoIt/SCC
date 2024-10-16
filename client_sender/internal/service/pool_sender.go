@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/base64"
+	"math/big"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -40,8 +42,13 @@ func (s *PoolSender) Send(poolCount int) {
 					return
 				}
 
-				dataToSend := base64.StdEncoding.EncodeToString([]byte(randomDataToSend()))
+				randomBytes, err := getRandomBytes(int64(1000), int64(10000))
+				if err != nil {
+					s.errorChan <- err
+					return
+				}
 
+				dataToSend := base64.StdEncoding.EncodeToString(randomBytes)
 				bytesSent, err := conn.Write([]byte(dataToSend))
 				if err != nil {
 					s.errorChan <- err
@@ -71,8 +78,19 @@ func (s *PoolSender) GetBytesCountSentChan() <-chan int64 {
 	return s.bytesCountSentChan
 }
 
-func randomDataToSend() string {
-	return "Ruslan"
+func getRandomBytes(minLen, maxLen int64) ([]byte, error) {
+	size, err := rand.Int(rand.Reader, big.NewInt(maxLen-minLen))
+	if err != nil {
+		return nil, err
+	}
+	totalSize := size.Int64() + minLen
+	bytes := make([]byte, totalSize)
+
+	_, err = rand.Read(bytes)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
 }
 
 func (s *PoolSender) GetErrorChan() <-chan error {
@@ -81,6 +99,7 @@ func (s *PoolSender) GetErrorChan() <-chan error {
 
 func (s *PoolSender) Shutdown(ctx context.Context) error {
 	close(s.exit)
+	close(s.bytesCountSentChan)
 	done := make(chan struct{})
 
 	go func() {

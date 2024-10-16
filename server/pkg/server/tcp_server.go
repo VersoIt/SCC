@@ -7,8 +7,8 @@ import (
 	"sync"
 )
 
-type Handler interface {
-	Handle(ReadWriteConn)
+type ConnHandler interface {
+	HandleConn(ReadWriteConn)
 }
 
 type TcpServer struct {
@@ -21,6 +21,7 @@ type TcpServer struct {
 type ReadWriteConn interface {
 	Read([]byte) (int, error)
 	Write([]byte) (int, error)
+	RemoteAddr() net.Addr
 }
 
 func NewTcpServer(port string, handlers ...func(ReadWriteConn)) (*TcpServer, error) {
@@ -48,6 +49,7 @@ func (s *TcpServer) Run() error {
 				continue
 			}
 		}
+		logrus.Infof("TCP: client %s connected!", conn.RemoteAddr().String())
 
 		s.wg.Add(1)
 		go s.handleConn(conn)
@@ -58,6 +60,7 @@ func (s *TcpServer) handleConn(conn net.Conn) {
 	defer s.wg.Done()
 	defer func(conn net.Conn) {
 		_ = conn.Close()
+		logrus.Infof("TCP: client %s disconnected!", conn.RemoteAddr().String())
 	}(conn)
 
 	for _, handler := range s.handlers {

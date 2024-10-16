@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
@@ -14,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	http2 "serverClientClient/internal/handler/http"
+	"serverClientClient/internal/handler/tcp"
 	"serverClientClient/internal/repository"
 	"serverClientClient/internal/service"
 	"serverClientClient/pkg/database"
@@ -48,23 +48,18 @@ func main() {
 		logrus.Error(err)
 		return
 	}
-
-	tcpServer, err := server.NewTcpServer(os.Getenv("TCP_SERVER_PORT"), func(conn server.ReadWriteConn) {
-		input := make([]byte, 1024)
-		bytesRead, err := conn.Read(input)
-		if err != nil {
-			logrus.Error(err)
-		}
-		fmt.Println(string(input[:bytesRead]))
-		_, err = conn.Write([]byte("Ruslan"))
-		if err != nil {
-			logrus.Error(err)
-		}
-	})
-	httpServer := server.HttpServer{}
 	repo := repository.NewRepository(db)
 	services := service.NewService(repo)
-	handlers := http2.NewHandler(services)
+	httpHandler := http2.NewHandler(services)
+
+	tcpHandler := tcp.NewHandler(services)
+	tcpServer, err := server.NewTcpServer(os.Getenv("TCP_SERVER_PORT"), tcpHandler.HandleConn)
+	if err != nil {
+		logrus.Error(err)
+		return
+	}
+
+	httpServer := server.HttpServer{}
 
 	countToInit, err := strconv.Atoi(os.Getenv("SERVER_EMP_COUNT"))
 	if err != nil {
@@ -94,7 +89,7 @@ func main() {
 
 	go func() {
 		logrus.Info("HTTP server started!")
-		err = httpServer.Run(os.Getenv("HTTP_SERVER_PORT"), handlers.InitRoutes())
+		err = httpServer.Run(os.Getenv("HTTP_SERVER_PORT"), httpHandler.InitRoutes())
 		if err != nil && errors.Is(err, http.ErrServerClosed) {
 			logrus.Info("HTTP server stopped")
 		} else if err != nil {

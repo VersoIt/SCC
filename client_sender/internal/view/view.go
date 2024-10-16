@@ -4,6 +4,7 @@ import (
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
+	"sync"
 )
 
 type View struct {
@@ -11,6 +12,7 @@ type View struct {
 	Button *widgets.QPushButton
 	Input  *widgets.QLineEdit
 	Output *widgets.QLabel
+	Mu     sync.Mutex
 }
 
 func NewView(title, buttonText string) *View {
